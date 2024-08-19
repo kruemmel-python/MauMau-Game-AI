@@ -1,4 +1,3 @@
-# csv Spieldaten generieren generieren.py
 import random
 import csv
 import os
@@ -14,15 +13,27 @@ class Karte:
 class Deck:
     def __init__(self):
         self.karten = []
-        farben = ['Herz', 'Karo', 'Pik', 'Kreuz']
-        werte = ['7', '8', '9', '10', 'Bube', 'Dame', 'König', 'Ass']
-        for farbe in farben:
-            for wert in werte:
+        self.farben = ['Herz', 'Karo', 'Pik', 'Kreuz']
+        self.werte = ['7', '8', '9', '10', 'Bube', 'Dame', 'König', 'Ass']
+        for farbe in self.farben:
+            for wert in self.werte:
                 self.karten.append(Karte(farbe, wert))
         random.shuffle(self.karten)
 
     def ziehe_karte(self):
         return self.karten.pop() if self.karten else None
+
+    def numerische_zu_karte(self, nummer):
+        if nummer == -1:
+            return None
+        farbe_index = nummer // 8
+        wert_index = nummer % 8
+        return Karte(self.farben[farbe_index], self.werte[wert_index])
+
+    def karte_zu_numerisch(self, karte):
+        farben = {'Herz': 0, 'Karo': 1, 'Pik': 2, 'Kreuz': 3}
+        werte = {'7': 0, '8': 1, '9': 2, '10': 3, 'Bube': 4, 'Dame': 5, 'König': 6, 'Ass': 7}
+        return farben[karte.farbe] * 8 + werte[karte.wert]
 
 class MauMau:
     def __init__(self):
@@ -31,6 +42,7 @@ class MauMau:
         self.spieler_hand = [self.deck.ziehe_karte() for _ in range(7)]
         self.ki_hand = [self.deck.ziehe_karte() for _ in range(7)]
         self.zuege = []
+        self.max_hand_laenge = 7  # Stellt sicher, dass die Handlänge konsistent ist
 
     def zufalls_ki_zug(self, hand):
         moegliche_zuege = [karte for karte in hand if karte.farbe == self.ablagestapel[-1].farbe or karte.wert == self.ablagestapel[-1].wert]
@@ -45,15 +57,19 @@ class MauMau:
                 hand.append(gezogene_karte)
             return gezogene_karte
 
-    def spielzug_aufzeichnen(self, spieler, hand, gezogene_karte):
-        hand_karten = ','.join([f"{karte.farbe} {karte.wert}" for karte in hand])
-        ablage = f"{self.ablagestapel[-1].farbe} {self.ablagestapel[-1].wert}"
-        if gezogene_karte:
-            zug = f"ziehen {gezogene_karte.farbe} {gezogene_karte.wert}"
-        else:
-            zug = f"spielen {self.ablagestapel[-1].farbe} {self.ablagestapel[-1].wert}"
+    def konvertiere_hand_zu_text(self, numerische_hand):
+        return [str(self.deck.numerische_zu_karte(nummer)) for nummer in numerische_hand if nummer != -1]
 
-        self.zuege.append([spieler, hand_karten, ablage, zug])
+    def spielzug_aufzeichnen(self, spieler, hand, gezogene_karte):
+        numerische_hand = [self.deck.karte_zu_numerisch(karte) for karte in hand]
+        text_hand = ','.join(self.konvertiere_hand_zu_text(numerische_hand))
+        ablage = str(self.ablagestapel[-1])
+        if gezogene_karte:
+            zug = f'ziehen {gezogene_karte}'
+        else:
+            zug = f'spielen {self.ablagestapel[-1]}'
+
+        self.zuege.append([spieler, text_hand, ablage, zug])
 
     def spiel_starten(self):
         max_zuege = 100  # Maximal erlaubte Züge pro Spiel, um Endlosschleifen zu verhindern
